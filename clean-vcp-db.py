@@ -5,13 +5,15 @@ try:
     import MySQLdb,sys
 except ImportError, e:
     print e, "You need to have the mysqldb library for this script dummy!"
-    import_error = False
 import getpass,getopt,sys
 
 class clean_vcp_db:
 
     #Please put your database information here
-    username,password,database,host,prefix = '','','','',''
+    username = ''
+    password = '' #remember to make file 700 if you put your password here!
+    database = ''
+    host     = ''
 
     def dbConnect(self):
         try:
@@ -67,9 +69,6 @@ class clean_vcp_db:
         print "--defaults           defaults you put in the script (python coders only!)\n" 
 
 def main():
-
-    if not import_error:
-        sys.exit(2)
 
     #Create instance of our special class
     i = clean_vcp_db()
