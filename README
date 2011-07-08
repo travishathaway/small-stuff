@@ -1,0 +1,5 @@
+These are the collect of all the small scripts that I write on a daily basis.  This README file will serve as a table of contents and give breif descriptions of what these scripts do.
+
+-- clean-vcp-db.py
+	This script was written in because our team needed a quick way to delete
+	tables with specific prefixes (usually created by Drupal). 
