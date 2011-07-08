@@ -61,6 +61,19 @@ class clean_vcp_db:
     def getPrefix(self):
         self.prefix = raw_input("Database prefix to remove: ")
 
+    def dropTables(self,cursor,rows):
+        for row in rows:
+            try:
+                cursor.execute("DROP TABLE "+row[0])
+            except MySQLdb.Error, e:
+                if e[0] == 1051:
+                    try:
+                        cursor.execute("DROP VIEW "+row[0])
+                    except MySQLdb.Error, e:
+                        print e, "DROP VIEW gone wrong"
+                else:
+                    print e, "DROP TABLE gone wrong"
+
     def usage(self):
         print "-h or --host=        hostname of MySQL server\n"
         print "-u or --user=        username for the MySQL server\n"
@@ -90,7 +103,6 @@ def main():
     cursor.execute('SHOW TABLES LIKE "'+i.prefix+'%"')
     rows = cursor.fetchall()
 
-    print i.prefix
     if not rows:
         print "nothing found"
         return 0
@@ -102,19 +114,10 @@ def main():
     answer = raw_input("Are these the tables you want to delete?\nPress 'y' if true press 'n' if not ")
 
     if answer == 'y':
-        for row in rows:
-            try:
-                cursor.execute("DROP TABLE "+row[0])
-            except MySQLdb.Error, e:
-                if e[0] == 1051:
-                    try:
-                        cursor.execute("DROP VIEW "+row[0])
-                    except MySQLdb.Error, e:
-                        print e, "DROP VIEW gone wrong"
-                else:
-                    print e, "DROP TABLE gone wrong"
 
+        i.dropTables(cursor,rows)
         i.showTables(cursor)
+
         print "\nThis is your new database buddy hope you like it!!"
 
         return 0 
