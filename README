@@ -1,5 +1,12 @@
-These are the collect of all the small scripts that I write on a daily basis.  This README file will serve as a table of contents and give breif descriptions of what these scripts do.
+These are a collection of all the small scripts that I write on a daily basis.  
+This README file will serve as a table of contents and give a breif description
+of what these scripts do.
 
 -- clean-vcp-db.py
 	This script was written in because our team needed a quick way to delete
 	tables with specific prefixes (usually created by Drupal). 
+
+-- fix_songs.py
+    This script fixes the names of music files if they ever get screwed up in
+    some shape or form.  Currenlty works for mp3,m4a,wma and requires the 
+    Mutagen python module/library. 
