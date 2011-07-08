@@ -19,9 +19,8 @@ class clean_vcp_db:
         try:
             conn = MySQLdb.connect(host = self.host, user = self.username, passwd = self.password, db=self.database)
         except MySQLdb.Error, e: 
-            print e
-            return 1
-        return conn
+            print e[1],"\nError code: "+str(e[0])
+            sys.exit(1)
 
     def showTables(self,cursor,like_statment=False):
         if not like_statment:
@@ -30,14 +29,14 @@ class clean_vcp_db:
                 for row in cursor.fetchall():
                     print row[0]
             except MySQLdb.Error, e:
-                print e, "SHOW TABLES failed"
+                print e[1],"\nError code: "+str(e[0])
         if like_statment:
             try:
                 cursor.execute("SHOW TABLES LIKE '"+i.prefix+"%'")
                 for row in cursor.fetchall():
                     print row[0]
             except MySQLdb.Error, e:
-                print e, "SHOW TABLES failed"
+                print e[1],"\nError code: "+str(e[0])
             
     def handleArgs(self,argv):
         try:
@@ -70,9 +69,9 @@ class clean_vcp_db:
                     try:
                         cursor.execute("DROP VIEW "+row[0])
                     except MySQLdb.Error, e:
-                        print e, "DROP VIEW gone wrong"
+                        print e[1],"\nError code: "+str(e[0])
                 else:
-                    print e, "DROP TABLE gone wrong"
+                    print e[1],"\nError code: "+str(e[0])
 
     def usage(self):
         print "-h or --host=        hostname of MySQL server\n"
@@ -88,15 +87,12 @@ def main():
     
     if not sys.argv[1:] or '--help' in sys.argv:
         i.usage()
-        return 0
+        sys.exit(2)
 
     i.handleArgs(sys.argv[1:])
 
     conn = i.dbConnect()
     
-    if conn == 1: 
-        return 0
-
     cursor = conn.cursor()
 
     i.getPrefix()
@@ -105,7 +101,7 @@ def main():
 
     if not rows:
         print "nothing found"
-        return 0
+        sys.exit(0)
 
     for row in rows:
         print row[0]
@@ -120,11 +116,11 @@ def main():
 
         print "\nThis is your new database buddy hope you like it!!"
 
-        return 0 
+        sys.exit(0)
 
     else:
         print "bye-bye"
-        return 0
+        sys.exit(0)
 
 if __name__ == '__main__':
     main()
