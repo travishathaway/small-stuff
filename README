@@ -10,3 +10,9 @@ of what these scripts do.
     This script fixes the names of music files if they ever get screwed up in
     some shape or form.  Currenlty works for mp3,m4a,wma and requires the 
     Mutagen python module/library. 
+
+-- fix_perms.sh
+	This script takes a a directory as an option and makes all files and 
+	directories underneath group writeable.  Good if you are working with
+	others on a file and want to quickly fix permissions in a large 
+	directory of files.
