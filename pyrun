@@ -1,0 +1,163 @@
+#! /usr/bin/env python 
+# Description:
+# This is a command line utility that sends SNMP packets to the various
+# CAT boxes in order to get their status to print it on a terminal screen
+#
+# Requirements:
+#   +pysnmp libraries
+#   +execute from the CAT network (i.e. from a CAT box) 
+#
+# Author:
+#   Travis Hathaway a.k.a. (morbid)
+
+
+#cmdgen from pysnmp library
+from pysnmp.entity.rfc3413.oneliner import cmdgen
+#ldap to search the CAT directory
+import ldap
+#system imports 
+import sys
+
+# This is the Ldap search function that queries the CAT's ldap database for the specified NetGroup
+# The second half of this function also does a bit of parsing to return a nicely formatted
+# list of domain names (i.e. boxes) 
+def ldapSearch(netgroup):
+    boxes = []
+    c = ldap.initialize("ldap://ldap.cat.pdx.edu")
+    c.simple_bind_s()
+
+    base_dn = 'ou=Netgroup,dc=catnip'
+    sfilter = 'cn='+netgroup
+    result = c.search_s(base_dn,ldap.SCOPE_SUBTREE,sfilter,['nisNetgroupTriple'])
+
+    for item in result[0][1]['nisNetgroupTriple']:
+        item =  item.split(',')
+        item[0] = item[0].strip('(')
+        boxes.append(item[0])
+
+    return boxes
+
+# This function performs a SNMP getNext on multiple boxes 
+# returns: total mem, used mem, free mem, total users, CPU load times (1,5,15 minutes)
+# return format: dictionary indexed with box names
+# Requirements: pysnmp library
+def snmpGetNext(boxes):
+    varBindTable = {}
+    errorIndication = {}
+    errorStatus = {}
+    errorIndex = {}
+#this for loop gets all the information about the boxes (users, load, memory, number of processes)
+    for box in boxes:
+        errorIndication[box], errorStatus[box], errorIndex[box], varBindTable[box] = cmdgen.CommandGenerator().nextCmd(
+        cmdgen.CommunityData('my-agent', 'public', 0),
+        cmdgen.UdpTransportTarget((box, 161)),
+        (1,3,6,1,2,1,25,1,5),
+        (1,3,6,1,4,1,2021,10,1,3),(1,3,6,1,4,1,2021,4,5))
+
+        
+    return varBindTable, errorIndication, errorStatus,errorIndex
+
+# this function is to perform SNMP getNext commands on a single box
+# returns: processes, ids, memory usage, cpu usage, name, options
+# return format: a list of tuples
+def snmpGetNextSingle(box):
+    varBindTable = []
+    errorIndication = []
+    errorStatus = []
+    errorIndex = []
+
+    print box
+    errorIndication, errorStatus, errorIndex, varBindTable = cmdgen.CommandGenerator().nextCmd(
+    cmdgen.CommunityData('my-agent', 'public', 0),
+    cmdgen.UdpTransportTarget((box, 161)),
+    (1,3,6,1,2,1,25,4,2,1,2), (1,3,6,1,2,1,25,4,2,1,5),
+    (1,3,6,1,2,1,25,4,1,1,1), (1,3,6,1,2,1,25,5,1,1,1),
+    (1,3,6,1,2,1,25,5,1,1,2))
+
+    return varBindTable, errorIndication, errorStatus,errorIndex
+
+# This creates a dict to make an easier to deal with data structure for displaying later
+# Returns: Dict with numerical indexes which refer to individual boxes
+def parseResults(varBindTable):
+    boxInfo = {}
+    counter = 0
+    for i in varBindTable:
+        boxInfo[counter] = {}
+        boxInfo[counter]['box'] = i
+        for info in varBindTable[i]:
+            if info[0][0] == (1, 3, 6, 1, 2, 1, 25, 1, 5, 0):#Total users
+                boxInfo[counter]['users'] = info[0][1]
+            if info[0][0] == (1, 3, 6, 1, 2, 1, 25, 1, 6, 0):#Total processes
+                boxInfo[counter]['processes'] = info[0][1]
+            if info[1][0] == (1,3,6,1,4,1,2021,10,1,3,1):#1 minute load
+                boxInfo[counter]['load_1'] = info[1][1]
+            if info[1][0] == (1,3,6,1,4,1,2021,10,1,3,2):#5 minute load
+                boxInfo[counter]['load_5'] = info[1][1]
+            if info[1][0] == (1,3,6,1,4,1,2021,10,1,3,3):#15 minute load
+                boxInfo[counter]['load_15'] =  info[1][1]
+            if info[2][0] == (1,3,6,1,4,1,2021,4,5,0):#total virtual memory (swp included)
+                boxInfo[counter]['total_mem'] = info[2][1] #1048576.0 is what you divide by for mb  
+            if info[2][0] == (1,3,6,1,4,1,2021,4,6,0):#total memory in use
+                boxInfo[counter]['used_mem'] = info[2][1]
+            if info[2][0] == (1,3,6,1,4,1,2021,4,11,0):#total memory free (swp included)
+                boxInfo[counter]['free_mem'] = info[2][1]
+        counter += 1
+    return boxInfo
+
+# Begin main function 
+def main():
+    #variables for the main function
+    tracker = 'y'
+
+    print "1 - linux-linuxlab-sys"
+    print "2 - linux-intellab-sys"
+    print "3 - linux-cecs-sys"
+    print "4 - linux-web-sys"
+    group = input("Which one do you want to do? ")
+
+    if group in range(5):
+        if group == 1:
+            netgroup = "linux-linuxlab-sys"
+        if group == 2:
+            netgroup = "linux-intellab-sys"
+        if group == 3:
+            netgroup = "linux-cecs-sys"
+        if group == 4:
+            netgroup = "linux-web-sys"
+    else:
+        print "the number you entered was out of range"
+        sys.exit(0)
+
+    boxes = ldapSearch(netgroup)
+
+    varBindTable, errorIndication, errorStatus,errorIndex = snmpGetNext(boxes)
+
+    boxInfo = parseResults(varBindTable)
+
+    while tracker == 'y':
+        print "ID\tBox\t\tUsers\tLoad\tMem"
+        for i in boxInfo:
+            print str(i)+"\t"+""+boxInfo[i]['box'][:13]+"\t"+str(boxInfo[i]['users'])+"\t"+str(boxInfo[i]['load_15'])+"\t"+str(100*(float(boxInfo[i]['used_mem'])/float(boxInfo[i]['total_mem'])))[:2]+"%"#this line prints info in boxInfo
+        boxId = raw_input("Would you like to investigate a box (press n to exit)? ")
+        if boxId == 'n' or boxId == 'N': 
+            print "bye-bye"
+            sys.exit(0)
+        boxId = int(boxId) #turn the number into an int
+        if boxId not in range(100): #no "net-group" contains more than 100?
+            print "Number out of range"
+            sys.exit(0)
+        else:
+            if boxInfo.get(boxId):
+                results, err1, err2, err3 = snmpGetNextSingle(boxInfo[boxId]['box'])
+                for i in results:
+                    print i[0][1]
+                    print i[1][1]
+                    print i[2]
+                    print i[3]
+                    print i[4][1],"\n","\n"
+            elif boxInfo.get(boxId) == None:
+                print "no value found at index"
+            sys.exit(0)
+if __name__ == "__main__":
+    main()
+
