@@ -60,6 +60,7 @@ class clean_vcp_db:
 
     def getPrefix(self):
         self.prefix = raw_input("Database prefix to remove: ")
+        self.prefix = self.prefix.replace('_','\_')
 
     def dropTables(self,cursor,rows):
         for row in rows:
