@@ -1,4 +1,17 @@
 #! /usr/bin/env python
+#######################################################
+# Name: MySQL user and database reporting script
+#                             
+# Description:                        
+# This script extracts valuable information from MySQL.
+# It will help find empty or seldom used Databses.
+#                             
+# Usage: getd <flag> 
+# Requirements: python-ldap,python-MySQL                          
+# 
+# Author: Travis J. Hathaway                  
+# Date:   10/26/2011                   
+#######################################################
 
 import traviSQL,datetime,getopt,sys,ldapClass,re
 from pprint import pprint
@@ -104,7 +117,9 @@ def get_db_sizes(databases=None):
 def get_small_size_db():
     '''
     Function that retrieves all databases smaller than 0.1MB on disk 
-    and with a newest update time of less than a year ago
+    and with a newest update time of less than a year ago.  You can 
+    modify the out put by adjusting the SQL query specifically the
+    WHERE statements.
     '''
 
     db = traviSQL.getcon(dbase="information_schema")
@@ -124,6 +139,11 @@ def get_small_size_db():
 
 
 def get_empty_db_users(emptyDB):
+    '''
+    The function was primarily used to find all users for a list of empty databases,
+    but you can also feed it a list of databases and the function will spit out a list of 
+    all users associated with the databases.
+    '''
 
     results = []
 
@@ -140,6 +160,10 @@ def get_empty_db_users(emptyDB):
                 yield user[0]
 
 def get_empty_users_only_empty_db(emptyDBusers,emptyDB):
+    '''
+    This function takes a list of users(first arg) and a list of databases(second arg).
+    It will return users that only have privileges to databases in the provided list.
+    '''
 
     db = traviSQL.getcon(dbase='mysql')
     c  = db.cursor()
@@ -159,6 +183,11 @@ def get_empty_users_only_empty_db(emptyDBusers,emptyDB):
             yield user
 
 def get_dbs(like,likeor=None):
+    '''
+    This function returns databases that meet the like and likeor criteria.
+    If you use the likeor argument, it will be append as an OR statement.
+    '''
+    
     db = traviSQL.getcon(dbase='information_schema')
     c  = db.cursor()
 
@@ -168,10 +197,14 @@ def get_dbs(like,likeor=None):
         c.execute("select distinct table_schema from tables where table_name like %s",[like])
     results = c.fetchall()
 
-    for i in results:
-        yield i[0]
+    for row in results:
+        yield row[0]
 
 def get_no_ldap_users():
+    '''
+    This function returns a list of users that have no corresponding LDAP record.
+    I'm using a custom python LDAP function called ldap_search.
+    '''
 
     pat = re.compile(r'\_|\-')
     db = traviSQL.getcon(dbase='mysql')
@@ -196,9 +229,18 @@ def main():
 --empty-db-users        : Finds all users of the empty databses
 --no-ldap               : Finds users with no ldap entry
 --almost-empty-db       : Db with that are very small < .1 '''
-    
+
+    flags = ['help',
+             'all-empty',
+             'all-by-update',
+             'all-by-size',
+             'all-by-update-size',
+             'empty-db-users',
+             'no-ldap',
+             'almost-empty-db']
+
     try:
-        opts, args = getopt.getopt(sys.argv[1:],'',['help','all-empty','all-by-update','all-by-size','all-by-update-size','empty-db-users','no-ldap','almost-empty-db'])
+        opts, args = getopt.getopt(sys.argv[1:],'',flags)
     except:
         print 'Option not recognized.  Try one of the following:'
         print help_text
