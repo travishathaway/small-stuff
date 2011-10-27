@@ -9,14 +9,44 @@
 # Usage: getd <flag> 
 # Requirements: python-ldap,python-MySQL                          
 # 
+# Special Notes:
+# Currently, I am using a custom module name traviSQL for
+# database connections.  Primary reason for doing so was keeping
+# my password out of files it shouldn't be in.  If you plan
+# on using this script yourself, I would create a module 
+# called <your-name>SQL and then do a search and replace on 
+# this file (%s/travisSQL/<your-name>SQL/g).  If you need help 
+# creating this module please drop me a line at thath@pdx.edu
+#
 # Author: Travis J. Hathaway                  
 # Date:   10/26/2011                   
 #######################################################
 
-import traviSQL,datetime,getopt,sys,ldapClass,re
+import traviSQL,datetime,getopt,sys,ldap,re
 from pprint import pprint
 
 mindate = datetime.datetime(datetime.MINYEAR, 1, 1)
+
+def ldap_search(ldap_host,base_dn,sfilter):
+    '''
+    Remember to type host as "ldap://..." and remember that you can't do ldap searches from just anywhere
+    Depending on what you are returning, you may need to mess around with the return results statement.
+    Right now it is optimized for returning results in ou=people,dc=pdx,dc=edu
+    '''
+    try:
+        c = ldap.initialize(ldap_host)
+    except ldap.LDAPError,e:
+        print e
+        return False
+
+    c.simple_bind_s()
+
+    result = c.search_s(base_dn,ldap.SCOPE_SUBTREE,sfilter)
+
+    if result:
+        return result[0][1]
+    else:
+        return False
 
 def get_empty_db():
     '''
@@ -79,6 +109,7 @@ def sorted_by_update_time():
         else:
             result[i[0]] = i[1]
     
+    c.close()
 
     for i in result:
         if result[i] == None:
@@ -111,6 +142,7 @@ def get_db_sizes(databases=None):
                      GROUP BY table_schema''')
 
         results = c.fetchall()
+    c.close()
     return results
     #return sorted(results, key=lambda x : float(x[1].strip('M')), reverse=True)
 
@@ -135,6 +167,7 @@ def get_small_size_db():
                     AS sb  
                     WHERE sbsize <= 0.1 AND sbupdate_time < '2010-01-01 00:00:01' ''')
 
+    c.close()
     return c.fetchall()
 
 
@@ -154,6 +187,7 @@ def get_empty_db_users(emptyDB):
         c.execute("SELECT User from db where db =%s", [i])
         results.append((i,c.fetchall()))
 
+    c.close()
     for i in results:
         if i[1]:
             for user in i[1]:
@@ -181,6 +215,7 @@ def get_empty_users_only_empty_db(emptyDBusers,emptyDB):
 
         if intersection and not difference:
             yield user
+    c.close()
 
 def get_dbs(like,likeor=None):
     '''
@@ -196,6 +231,7 @@ def get_dbs(like,likeor=None):
     else:
         c.execute("select distinct table_schema from tables where table_name like %s",[like])
     results = c.fetchall()
+    c.close()
 
     for row in results:
         yield row[0]
@@ -213,20 +249,33 @@ def get_no_ldap_users():
     c.execute("SELECT distinct user from user")
 
     users = c.fetchall()
+    c.close()
 
     for user in users:
         if not pat.search(user[0]):
             if user[0].count('') < 10:
-                if not ldapClass.ldap_search('ldap://ldap.oit.pdx.edu','ou=people,dc=pdx,dc=edu','uid='+user[0]):
+                if not ldap_search('ldap://ldap.oit.pdx.edu','ou=people,dc=pdx,dc=edu','uid='+user[0]):
                     print user[0]
 
 
 def main():
-    help_text='''--all-empty             : Lists all empty databases (where show tables returns nothing)
---all-by-update         : List all data bases and lists the update time of the last updated table
+    help_text='''
+The outout of these commands can easily be redirected to a text file where 
+it can then be opened as a CSV file in excel or OpenOffice.  Typical usage 
+is as follows:
+
+    getd --all-empty >> empty-dbs.csv
+
+Here are the flags you can pass the script and what it will return:
+
+--all-empty             : Lists all empty databases (where show tables returns nothing)
+                          and users of only those databases
+--all-by-update         : List all databases and lists the update time of 
+                          the last updated table
 --all-by-size           : List all databases and gives size in MB
---all-by-update-size    : Combination of the previous two
---empty-db-users        : Finds all users of the empty databses
+--all-by-update-size    : Combination of the previous two.  This also makes an attempt 
+                          at guessing how the database is being used by seeing if contains
+                          tables specific to joomla,wordpress and drupal
 --no-ldap               : Finds users with no ldap entry
 --almost-empty-db       : Db with that are very small < .1 '''
 
@@ -235,7 +284,6 @@ def main():
              'all-by-update',
              'all-by-size',
              'all-by-update-size',
-             'empty-db-users',
              'no-ldap',
              'almost-empty-db']
 
@@ -252,31 +300,30 @@ def main():
     for o, a in opts:
         if  o == '--all-empty':
             emptyDB,fulldb = get_empty_db()
-        
+            users = list(get_empty_db_users(emptyDB))
+            only_users_of_dbs = list(get_empty_users_only_empty_db(users,emptyDB))
+            
+            print "Databases"
             for i in emptyDB:
                 print i
 
+            print "\nUsers"
+            for user in only_users_of_dbs:
+                print user
+            
         elif o == '--all-by-update':
             results = sorted_by_update_time()
             results = sorted(results, key=lambda x: x[1] or mindate,reverse=True )
-            print 'Database\t\t\tLast Updated\n'
+            print 'Databases,Last Updated'
             for i in results:
-                counter = 0 
-                for c in i[0]:
-                    counter += 1 
-                if counter > 15:
-                    print i[0],'\t\t',i[1]
-                elif counter < 7:
-                    print i[0],'\t\t\t\t',i[1]
-                else:
-                    print i[0],'\t\t\t',i[1]
+                print i[0],',',i[1]
         elif o == '--all-by-size':
             sizes = get_db_sizes()
-            sizes = sorted(sizes, key=lambda x : float(x[1]), reverse=True)
-
+            sizes = sorted(sizes, key=lambda x : float(x[1] or 0.0), reverse=True)
+            print 'Databases,Size(in MB)'
             for i in sizes:
-                print i
-
+                print i[0],',',i[1]
+            
         elif o == '--all-by-update-size':
             combined_list = []
             dates = sorted_by_update_time()
@@ -322,18 +369,6 @@ def main():
                 else:
                     print i[0],',','0000-00-00',',',i[2]
             
-        elif o == '--empty-db-users':
-            emptyDB,fulldb = get_empty_db()
-            users_of_empty_db = list(get_empty_db_users(emptyDB))
-
-            only_empty_db_users = list(get_empty_users_only_empty_db(users_of_empty_db,emptyDB))
-
-            for user in only_empty_db_users:
-                print user
-            print "\n"
-            print "DATABASES"
-            for database in emptyDB:
-                print database
         elif o == '--no-ldap':
             get_no_ldap_users()
 
