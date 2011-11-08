@@ -39,17 +39,22 @@ def parse_args(args,long_flags,short_flags):
 #    print "Please supply argument (e.g. mp3 directory)"
 #     sys.exit(0)
 
-def rename_mp3(music_file=None,music_dir=None):
+def rename_mp3(music_file=None,music_dir=None,**kwargs):
     if music_dir:
-        song_list = os.listdir(music_dir)
+        song_list = kwargs.get('full')
     elif music_file:
-        song_list = [music_file]
+        try:
+            song_list = [os.path.abspath(music_file)]
+        except IOError, e:
+            print e
+            sys.exit(1)
     else:
         return 1
 
     pat = re.compile(r'(\d+)/\d+')#Some times tracks show up like 1/8, so we have to filter it. 
 
     for song in song_list:
+        dirname = os.path.dirname(song)
         try:
             audio = MP3(song)
             print song,audio["TIT2"],audio["TRCK"]
@@ -64,9 +69,9 @@ def rename_mp3(music_file=None,music_dir=None):
                     dest = "0"+str(audio['TRCK'][0])+" "+str(audio["TIT2"]).replace('/','-')+".mp3"
                 else:
                     dest = str(audio['TRCK'][0])+" "+str(audio["TIT2"]).replace('/','-')+".mp3"
-            os.rename(song,dest)
-        except: 
-            print "Operation failed",song
+            os.rename(song,dirname+'/'+dest)
+        except (IOError,OSError,KeyError), e: 
+            print "Operation failed",song,e
 
 def rename_m4a(music_file=None,music_dir=None):
     if music_dir:
@@ -112,6 +117,9 @@ def main():
     music_file = None
     music_dir = None
     file_type = None
+    if not sys.argv[1:]:
+        help_text()
+        sys.exit(2)
     opts, args = parse_args(sys.argv,long_flags,short_flags)
 
     for o,v in opts:
@@ -141,17 +149,25 @@ def main():
             sys.exit(2)
 
     if music_dir:
+        try:
+            music_dir = os.path.abspath(music_dir)
+            os.chdir(music_dir)
+            full = [ os.path.abspath(x) for x in os.listdir(music_dir) ]
+        except (IOError, OSError), e:
+            print e
+            sys.exit(1)
         if file_type == None:
             print "Please specify file type (wma,m4a,mp3)"
             sys.exit(2)
         if file_type == 'mp3':
-            rename_mp3(music_dir=music_dir)
+            rename_mp3(music_dir=music_dir,full=full)
         elif file_type == 'm4a':
             rename_m4a(music_dir=music_dir)
         elif file_type == 'wma':
             rename_wma(music_dir=music_dir)
         else:
             print 'File type not supported'
+            sys.exit(2)
 
 if __name__ == '__main__':
     main()
