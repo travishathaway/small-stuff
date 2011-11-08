@@ -32,12 +32,32 @@ def parse_args(args,long_flags,short_flags):
         print "Option not recognized"
         help_text()
         sys.exit(2)
-
+    
     return opts,args
 
 #if not sys.argv[1:]:
 #    print "Please supply argument (e.g. mp3 directory)"
 #     sys.exit(0)
+
+def return_absolute(directory):
+    '''
+    Given a directory or file, finds their absolute path(s) and returns it as a list
+    with absolute paths
+    '''
+    
+    try:
+        listed_dir = os.listdir(directory)
+    except OSError as (errno, stder):
+        if errno == 20: #20 means the means that it is a file
+            try:
+                return [os.path.abspath(directory)]
+            except (OSError, IOError):
+                sys.exit(1)
+        elif errno == 2: #2 means it doens't exist
+            print stder
+    os.chdir(directory)
+    return [os.path.abspath(x) for x in listed_dir ] 
+
 
 def rename_mp3(music_file=None,music_dir=None,**kwargs):
     if music_dir:
@@ -149,13 +169,6 @@ def main():
             sys.exit(2)
 
     if music_dir:
-        try:
-            music_dir = os.path.abspath(music_dir)
-            os.chdir(music_dir)
-            full = [ os.path.abspath(x) for x in os.listdir(music_dir) ]
-        except (IOError, OSError), e:
-            print e
-            sys.exit(1)
         if file_type == None:
             print "Please specify file type (wma,m4a,mp3)"
             sys.exit(2)
