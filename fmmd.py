@@ -1,4 +1,4 @@
-#! /home/thath/dev/fmmd/bin/python
+#! /home/thath/dev/small-stuff/bin/python
 from docopt import docopt
 from fmmd.command_def import __doc__ as command_def
 from fmmd.rename import *
