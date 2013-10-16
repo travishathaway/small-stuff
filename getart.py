@@ -1,8 +1,8 @@
 #! /usr/bin/env python
 from docopt import docopt
-from gaa.command_def import __doc__ as command_def
-from gaa.utilities import MusicInfo
-from gaa.utilities import get_album_art
+from getart.command_def import __doc__ as command_def
+from getart.utilities import MusicInfo
+from getart.utilities import get_album_art
 from discogs_client import DiscogsAPIError
 from pprint import pprint
 

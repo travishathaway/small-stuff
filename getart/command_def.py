@@ -1,0 +1,4 @@
+"""
+Usage:
+ smmd [options]... <directory>...
+"""
