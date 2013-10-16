@@ -1,14 +1,14 @@
 #! /usr/bin/env python
 from docopt import docopt
 from getart.command_def import __doc__ as command_def
-from getart.utilities import MusicInfo
-from getart.utilities import get_album_art
 from discogs_client import DiscogsAPIError
 from pprint import pprint
 
 def main():
     # Grab args
     args = docopt(command_def)
+    from getart.utilities import MusicInfo
+    from getart.utilities import get_album_art
 
     # Scan root directory for all music files (wma, m4a and mp3)
     music_info = MusicInfo(args.get('<directory>'))

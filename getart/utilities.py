@@ -77,9 +77,9 @@ class MusicInfo(object):
             try: 
                 mp3 = MP3(file)
 
-                artist = unicode(mp3.get('TPE1', ['Unknown Artist'])[0])
-                song   = unicode(mp3.get('TIT2', ['Unknown Title'])[0])
-                album  = unicode(mp3.get('TALB', ['Unknown Album'])[0])
+                artist = unicode(mp3.get('TPE1', ['Unknown Artist'])[0]).lower()
+                song   = unicode(mp3.get('TIT2', ['Unknown Title'])[0]).lower()
+                album  = unicode(mp3.get('TALB', ['Unknown Album'])[0]).lower()
 
                 self.__add_stats(artist, album, song)
             except Exception as e:
@@ -94,9 +94,9 @@ class MusicInfo(object):
             try:
                 mp4 = MP4(file)
 
-                artist = unicode(mp4.get('\xa9ART',['Unknown Artist'])[0])
-                song   = unicode(mp4.get('\xa9nam',['Unknown Title'])[0])
-                album  = unicode(mp4.get('\xa9alb',['Unknown Album'])[0])
+                artist = unicode(mp4.get('\xa9ART',['Unknown Artist'])[0]).lower()
+                song   = unicode(mp4.get('\xa9nam',['Unknown Title'])[0]).lower()
+                album  = unicode(mp4.get('\xa9alb',['Unknown Album'])[0]).lower()
 
                 self.__add_stats(artist, album, song)
             except Exception as e:
@@ -111,9 +111,9 @@ class MusicInfo(object):
             try:
                 asf = ASF(file)
 
-                artist = unicode(asf.get('WM/AlbumArtist', ['Unknown Artist'])[0])
-                song   = unicode(asf.get('Title', ['Unknown Title'])[0])
-                album  = unicode(asf.get('WM/AlbumTitle', ['Unknown Album'])[0])
+                artist = unicode(asf.get('WM/AlbumArtist', ['Unknown Artist'])[0]).lower()
+                song   = unicode(asf.get('Title', ['Unknown Title'])[0]).lower()
+                album  = unicode(asf.get('WM/AlbumTitle', ['Unknown Album'])[0]).lower()
 
                 self.__add_stats(artist, album, song)
             except Exception as e:
